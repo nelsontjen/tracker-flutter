@@ -1,4 +1,15 @@
-# Miscellaneous
+# Gradle / Build
+/build/
+/build_error.txt
+/build_output*.txt
+/bypass_output.txt
+/final_output.txt
+/temp*.txt
+/android/local_repo/
+/android/error_log.txt
+/android/init.gradle
+/android/build/
+/.gradle/
 *.class
 *.log
 *.pyc

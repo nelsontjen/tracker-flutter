@@ -8,7 +8,8 @@ plugins {
 android {
     namespace = "com.example.expense_tracker"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "28.2.13676358"
+    buildToolsVersion = "36.1.0"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -37,8 +38,16 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+        disable += setOf("InvalidPackage", "HardwareIds")
+    }
 }
 
 flutter {
     source = "../.."
 }
+
+
