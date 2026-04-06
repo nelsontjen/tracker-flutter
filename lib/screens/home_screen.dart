@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
@@ -25,7 +24,6 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Expense> _allExpenses = []; 
   
   bool _isLoading = true;
-  Timer? _logoutTimer;
 
   int _chartMonthFilter = DateTime.now().month;
   int _chartYearFilter = DateTime.now().year;
@@ -34,53 +32,17 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadAllData();
-    _setupAutoLogout(); // Panggil fungsi penghitung sesi token
+    // Auto-logout timer removed in favor of silent background auto-login.
   }
 
   @override
   void dispose() {
-    _logoutTimer?.cancel();
     super.dispose();
   }
 
-  // ==== 1. AUTO LOGOUT LOGIC ====
-  Future<void> _setupAutoLogout() async {
-    final token = await _authService.getToken();
-    if (token != null) {
-      try {
-        final parts = token.split('.');
-        if (parts.length == 3) {
-          String output = parts[1].replaceAll('-', '+').replaceAll('_', '/');
-          switch (output.length % 4) {
-            case 2: output += '=='; break;
-            case 3: output += '='; break;
-          }
-          final payloadStr = utf8.decode(base64Url.decode(output));
-          final payloadMap = jsonDecode(payloadStr);
-
-          if (payloadMap.containsKey('exp')) {
-            final expTimeMillis = payloadMap['exp'] * 1000;
-            final remainingTimeMillis = expTimeMillis - DateTime.now().millisecondsSinceEpoch;
-
-            if (remainingTimeMillis > 0) {
-              _logoutTimer = Timer(Duration(milliseconds: remainingTimeMillis), () {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Sesi telah berakhir. Silakan login kembali.'), backgroundColor: Colors.orange),
-                  );
-                  _handleLogout();
-                }
-              });
-            } else {
-              _handleLogout();
-            }
-          }
-        }
-      } catch (e) {
-        print('Error decoding token for auto-logout: $e');
-      }
-    }
-  }
+  // ==== 1. AUTO LOGOUT LOGIC (Dihapus) ====
+  // Timer logout otomatis telah dinonaktifkan karena kita menggunakan
+  // mekanisme "Silent Auto-Login" di background menggunakan secure_storage.
 
   Future<void> _loadAllData() async {
     setState(() => _isLoading = true);
@@ -154,7 +116,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleLogout() async {
-    _logoutTimer?.cancel();
     await _authService.logout();
     if (!mounted) return;
     Navigator.of(context).pushReplacement(

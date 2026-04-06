@@ -16,6 +16,22 @@ sc.init(null, trustAllCerts, SecureRandom())
 HttpsURLConnection.setDefaultSSLSocketFactory(sc.socketFactory)
 HttpsURLConnection.setDefaultHostnameVerifier { _, _ -> true }
 
+gradle.allprojects {
+    buildscript {
+        repositories {
+            maven { url = uri("https://maven.aliyun.com/repository/public") }
+            maven { url = uri("https://maven.aliyun.com/repository/google") }
+            maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
+        }
+    }
+    repositories {
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
+        maven { url = uri("https://maven.aliyun.com/repository/google") }
+        maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
+        maven { url = uri("https://storage.flutter-io.cn/download.flutter.io") }
+    }
+}
+
 pluginManagement {
     val flutterSdkPath =
         run {

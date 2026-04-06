@@ -1,10 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AuthService {
   // Ganti dengan domain Vercel Anda, contoh: 'https://nama-proyek-anda.vercel.app/api'
   static const String baseUrl = 'https://tracker-nextjs-klug.vercel.app/api';
+  
+  // Instance untuk penyimpanan aman
+  final _secureStorage = const FlutterSecureStorage();
 
   Future<bool> login(String username, String password) async {
     try {
@@ -21,6 +25,11 @@ class AuthService {
         if (token != null) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('jwt_token', token);
+          
+          // Simpan kredensial secara aman untuk Silent Auto-Login
+          await _secureStorage.write(key: 'saved_username', value: username);
+          await _secureStorage.write(key: 'saved_password', value: password);
+          
           return true;
         }
       }
@@ -34,6 +43,10 @@ class AuthService {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('jwt_token');
+    
+    // Hapus kredensial saat logout manual
+    await _secureStorage.delete(key: 'saved_username');
+    await _secureStorage.delete(key: 'saved_password');
   }
 
   Future<String?> getToken() async {
@@ -43,26 +56,46 @@ class AuthService {
 
   Future<bool> isAuthenticated() async {
     final token = await getToken();
-    if (token == null) return false;
+    bool isTokenValid = false;
 
-    try {
-      // Decode JWT untuk cek expired (sama dengan logic di Next.js)
-      final parts = token.split('.');
-      if (parts.length != 3) return false;
+    if (token != null) {
+      try {
+        final parts = token.split('.');
+        if (parts.length == 3) {
+          final payloadStr = _decodeBase64(parts[1]);
+          final payloadMap = jsonDecode(payloadStr);
 
-      final payloadStr = _decodeBase64(parts[1]);
-      final payloadMap = jsonDecode(payloadStr);
-
-      if (payloadMap is! Map<String, dynamic>) return false;
-      if (!payloadMap.containsKey('exp')) return true;
-
-      final expTime = DateTime.fromMillisecondsSinceEpoch(
-        payloadMap['exp'] * 1000,
-      );
-      return expTime.isAfter(DateTime.now());
-    } catch (e) {
-      return false;
+          if (payloadMap is Map<String, dynamic>) {
+            if (!payloadMap.containsKey('exp')) {
+               isTokenValid = true;
+            } else {
+               final expTime = DateTime.fromMillisecondsSinceEpoch(
+                 payloadMap['exp'] * 1000,
+               );
+               isTokenValid = expTime.isAfter(DateTime.now());
+            }
+          }
+        }
+      } catch (e) {
+        // Abaikan error format, token dianggap tidak valid
+      }
     }
+
+    if (isTokenValid) {
+      return true;
+    }
+
+    // SILENT RE-LOGIN: Jika token hangus / kosong, coba login pakai password tersimpan
+    final savedUsername = await _secureStorage.read(key: 'saved_username');
+    final savedPassword = await _secureStorage.read(key: 'saved_password');
+    
+    if (savedUsername != null && savedPassword != null) {
+      // Coba re-login secara diam-diam
+      final success = await login(savedUsername, savedPassword);
+      return success;
+    }
+
+    return false;
   }
 
   String _decodeBase64(String str) {
@@ -77,7 +110,7 @@ class AuthService {
         output += '=';
         break;
       default:
-        throw Exception('Illegal base64url string!"');
+        throw Exception('Illegal base64url string!');
     }
     return utf8.decode(base64Url.decode(output));
   }
