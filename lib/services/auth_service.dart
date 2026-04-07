@@ -40,6 +40,26 @@ class AuthService {
     }
   }
 
+  // Kembalikan null jika sukses, atau pesan error jika gagal
+  Future<String?> register(String username, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'username': username, 'password': password}),
+      );
+
+      if (response.statusCode == 201) {
+        return null; // sukses, tidak ada error
+      }
+
+      final data = jsonDecode(response.body);
+      return data['error'] ?? 'Registrasi gagal. Coba lagi.';
+    } catch (e) {
+      return 'Tidak dapat terhubung ke server.';
+    }
+  }
+
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('jwt_token');

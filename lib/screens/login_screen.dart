@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
-import 'home_screen.dart'; // Akan dibuat nanti
+import 'home_screen.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -196,6 +197,32 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ), // Close AutofillGroup
               ), // Close Container containing Card Login
+
+                  const SizedBox(height: 24),
+                  // Link ke Register
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Belum punya akun? ',
+                        style: GoogleFonts.inter(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (ctx) => const RegisterScreen()),
+                        ),
+                        child: Text(
+                          'Daftar',
+                          style: GoogleFonts.inter(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
             ],
             ),
           ),
