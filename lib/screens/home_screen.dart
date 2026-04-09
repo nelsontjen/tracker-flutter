@@ -115,6 +115,139 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ==== EDIT EXPENSE ====
+  void _openEditExpenseModal(Expense expense) {
+    final descController = TextEditingController(text: expense.description);
+    final amountController = TextEditingController(
+        text: expense.amount.toStringAsFixed(0));
+    DateTime selectedDate = expense.date;
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16, right: 16, top: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Edit Pengeluaran',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: descController,
+                    decoration: InputDecoration(
+                      labelText: 'Deskripsi',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: amountController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Nominal (Rp)',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixText: 'Rp ',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Date picker row
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (picked != null) {
+                        setModalState(() => selectedDate = picked);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.calendar_today, size: 18, color: Colors.grey),
+                          const SizedBox(width: 8),
+                          Text(DateFormat('dd MMMM yyyy', 'id_ID').format(selectedDate)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: isSaving
+                        ? null
+                        : () async {
+                            final desc = descController.text.trim();
+                            final amt = double.tryParse(
+                                amountController.text.replaceAll('.', '').replaceAll(',', ''));
+                            if (desc.isEmpty || amt == null) return;
+
+                            setModalState(() => isSaving = true);
+                            final updated = await _apiService.editExpense(
+                                expense.id, desc, amt, selectedDate);
+                            setModalState(() => isSaving = false);
+
+                            if (updated != null && mounted) {
+                              setState(() {
+                                final idx = _expenses.indexWhere((e) => e.id == expense.id);
+                                if (idx != -1) _expenses[idx] = updated;
+                                final idx2 = _allExpenses.indexWhere((e) => e.id == expense.id);
+                                if (idx2 != -1) _allExpenses[idx2] = updated;
+                              });
+                              if (!mounted) return;
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Pengeluaran berhasil diperbarui!')),
+                              );
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: isSaving
+                        ? const SizedBox(height: 20, width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Simpan Perubahan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _handleLogout() async {
     await _authService.logout();
     if (!mounted) return;
@@ -337,17 +470,24 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           Text(
                             currencyFormatter.format(expense.amount),
-                            style: TextStyle(
-                              color: const Color(0xFFEF4444), // Warna Merah 'destructive' Tailwind
+                            style: const TextStyle(
+                              color: Color(0xFFEF4444),
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
                           ),
                           IconButton(
+                            icon: const Icon(Icons.edit_outlined),
+                            color: Colors.grey.shade400,
+                            tooltip: 'Edit',
+                            onPressed: () => _openEditExpenseModal(expense),
+                          ),
+                          IconButton(
                             icon: const Icon(Icons.delete_outline),
                             color: Colors.grey.shade400,
+                            tooltip: 'Hapus',
                             onPressed: () => _confirmDelete(expense.id, expense.description),
-                          )
+                          ),
                         ],
                       ),
                     ),

@@ -88,4 +88,32 @@ class ApiService {
       return false;
     }
   }
+
+  Future<Expense?> editExpense(String id, String description, double amount, DateTime date) async {
+    final token = await _authService.getToken();
+    if (token == null) return null;
+
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/expenses/$id'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'description': description,
+          'amount': amount,
+          'date': "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}",
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return Expense.fromJson(jsonDecode(response.body));
+      }
+      return null;
+    } catch (e) {
+      print('Edit Expense Error: $e');
+      return null;
+    }
+  }
 }
